@@ -4,6 +4,7 @@ from PIL import Image, ImageOps
 from tensorflow.keras.models import load_model
 
 st.title("Emotion Recognition")
+st.write("Take a photo or upload one. Keep your face in the center.")
 
 @st.cache_resource
 def get_model():
@@ -12,9 +13,9 @@ def get_model():
 model = get_model()
 emotions = ['Angry', 'Disgust', 'Fear', 'Happy', 'Neutral', 'Sad', 'Surprise']
 
-img_file = st.camera_input("Photo kheencho (chehra beech mein rakho)")
+img_file = st.camera_input("Take a photo")
 if img_file is None:
-    img_file = st.file_uploader("Ya photo upload karo", type=["jpg", "jpeg", "png"])
+    img_file = st.file_uploader("Or upload a photo", type=["jpg", "jpeg", "png"])
 
 if img_file is not None:
     img = Image.open(img_file).convert("L")
