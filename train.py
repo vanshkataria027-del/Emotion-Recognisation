@@ -12,9 +12,14 @@ def get_model():
 
 model = get_model()
 emotions = ['Angry', 'Disgust', 'Fear', 'Happy', 'Neutral', 'Sad', 'Surprise']
-face_cascade = cv2.CascadeClassifier(
-    cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
-)
+import os, urllib.request
+CASCADE = "haarcascade_frontalface_default.xml"
+if not os.path.exists(CASCADE):
+    urllib.request.urlretrieve(
+        "https://raw.githubusercontent.com/opencv/opencv/4.x/data/haarcascades/" + CASCADE,
+        CASCADE,
+    )
+face_cascade = cv2.CascadeClassifier(CASCADE)
 
 img_file = st.camera_input("Photo kheencho")
 if img_file is None:
