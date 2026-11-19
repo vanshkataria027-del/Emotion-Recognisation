@@ -1,30 +1,41 @@
-import tensorflow as tf
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Dropout, BatchNormalization
-from tensorflow.keras.preprocessing.image import ImageDataGenerator
+import streamlit as st
+import cv2
+import numpy as np
+from PIL import Image
+from tensorflow.keras.models import load_model
 
-train_dir = 'train'
-test_dir = 'test'
+st.title("Emotion Recognition")
 
-train_datagen = ImageDataGenerator(rescale=1./255, rotation_range=10, horizontal_flip=True)
-test_datagen = ImageDataGenerator(rescale=1./255)
+@st.cache_resource
+def get_model():
+    return load_model("emotion_model.h5")
 
-train_data = train_datagen.flow_from_directory(train_dir, target_size=(48,48), color_mode='grayscale', batch_size=64, class_mode='categorical')
-test_data = test_datagen.flow_from_directory(test_dir, target_size=(48,48), color_mode='grayscale', batch_size=64, class_mode='categorical')
+model = get_model()
+emotions = ['Angry', 'Disgust', 'Fear', 'Happy', 'Neutral', 'Sad', 'Surprise']
+face_cascade = cv2.CascadeClassifier(
+    cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
+)
 
-model = Sequential([
-    Conv2D(32, (3,3), activation='relu', input_shape=(48,48,1)),
-    BatchNormalization(), MaxPooling2D(2,2), Dropout(0.25),
-    Conv2D(64, (3,3), activation='relu'),
-    BatchNormalization(), MaxPooling2D(2,2), Dropout(0.25),
-    Conv2D(128, (3,3), activation='relu'),
-    BatchNormalization(), MaxPooling2D(2,2), Dropout(0.25),
-    Flatten(),
-    Dense(256, activation='relu'), Dropout(0.5),
-    Dense(7, activation='softmax')
-])
+img_file = st.camera_input("Photo kheencho")
+if img_file is None:
+    img_file = st.file_uploader("Ya photo upload karo", type=["jpg", "jpeg", "png"])
 
-model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
-model.fit(train_data, validation_data=test_data, epochs=10)
-model.save('emotion_model.h5')
-print("Model saved!")
+if img_file is not None:
+    img = np.array(Image.open(img_file).convert("RGB"))
+    frame = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    faces = face_cascade.detectMultiScale(gray, 1.3, 5)
+
+    if len(faces) == 0:
+        st.warning("Koi face nahi mila, dobara try karo.")
+
+    for (x, y, w, h) in faces:
+        face = cv2.resize(gray[y:y+h, x:x+w], (48, 48)) / 255.0
+        face = np.reshape(face, (1, 48, 48, 1))
+        pred = model.predict(face, verbose=0)
+        emotion = emotions[int(np.argmax(pred))]
+        cv2.rectangle(frame, (x, y), (x+w, y+h), (0, 255, 0), 2)
+        cv2.putText(frame, emotion, (x, max(y-10, 20)),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+
+    st.image(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
